@@ -178,9 +178,12 @@ function randomCode(len = 6) {
 
 async function pollForStart(token, code, { signal, botUsername = '', timeoutMs = CONNECT_TIMEOUT_MS } = {}) {
   const started = Date.now();
+  const startedSec = Math.floor(started / 1000);
   let offset = 0;
   const target = code.toLowerCase();
   const botLower = botUsername.toLowerCase();
+  const promptedChats = new Set();
+
   while (!signal || !signal.aborted) {
     if (Date.now() - started > timeoutMs) {
       throw new Error('Timed out waiting for connection. Try again.');
@@ -206,31 +209,69 @@ async function pollForStart(token, code, { signal, botUsername = '', timeoutMs =
       if (!msg || !msg.text) continue;
       const text = msg.text.trim().toLowerCase();
 
-      // Strip optional "@botname" suffix on the command, then compare.
-      // Accepts: /start CODE | /startCODE | /start@bot CODE | /start@botCODE | CODE
-      let payload = null;
+      // Bare code — "just send the code" shortcut, works in DMs or groups.
       if (text === target) {
-        payload = target;
-      } else {
-        const m = text.match(/^\/start(?:@([a-z0-9_]+))?\s*(.+)?$/);
-        if (m) {
-          const mentioned = m[1];
-          const rest = (m[2] || '').trim();
-          if (!mentioned || !botLower || mentioned === botLower) {
-            if (rest === target) payload = target;
-          }
-        }
+        return matchInfo(msg);
       }
-      if (payload === target) {
-        return {
-          chatId: String(msg.chat.id),
-          topicId: msg.message_thread_id ? String(msg.message_thread_id) : '',
-          from: msg.from || null
-        };
+
+      // /start, /startCODE, /start CODE, /start@bot, /start@bot CODE
+      const m = text.match(/^\/start(?:@([a-z0-9_]+))?\s*(.+)?$/);
+      if (!m) continue;
+      const mentioned = m[1];
+      const rest = (m[2] || '').trim();
+      const forUs = !mentioned || !botLower || mentioned === botLower;
+      if (!forUs) continue;
+
+      if (rest === target) return matchInfo(msg);
+
+      // /start without a payload → prompt the user once per chat, but only
+      // for messages received after this connect flow started so we don't
+      // reply to stale updates the user saw minutes ago.
+      if (!rest && msg.date && msg.date >= startedSec - 30) {
+        const key = String(msg.chat.id) + ':' + (msg.message_thread_id || '');
+        if (!promptedChats.has(key)) {
+          promptedChats.add(key);
+          try { await sendConnectPrompt(token, msg, code); }
+          catch (e) { console.warn('connect prompt failed:', e && e.message); }
+        }
       }
     }
   }
   return null;
+}
+
+function matchInfo(msg) {
+  return {
+    chatId: String(msg.chat.id),
+    topicId: msg.message_thread_id ? String(msg.message_thread_id) : '',
+    from: msg.from || null
+  };
+}
+
+async function sendConnectPrompt(token, msg, code) {
+  const body = {
+    chat_id: msg.chat.id,
+    text:
+      `👋 To link this chat with the <b>${escapeTgHtml(APP_NAME)}</b> browser extension, ` +
+      `send this code here as a normal message:\n\n` +
+      `<code>${escapeTgHtml(code)}</code>`,
+    parse_mode: 'HTML',
+    disable_web_page_preview: true
+  };
+  if (msg.message_thread_id) body.message_thread_id = msg.message_thread_id;
+  const res = await fetch(
+    `https://api.telegram.org/bot${encodeURIComponent(token)}/sendMessage`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }
+  );
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data || !data.ok) {
+    throw new Error((data && data.description) || `HTTP ${res.status}`);
+  }
+  return data;
 }
 
 async function startConnectFlow(tg, itemNode) {
