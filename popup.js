@@ -13,34 +13,56 @@
   const state = await loadState();
   const targets = listTargets(state);
 
-  if (targets.length === 0) {
-    renderQr(root, url);
-    return;
+  renderShell(root, url, targets.length);
+  renderQrInto(document.getElementById('qr'), url);
+
+  document.getElementById('open-settings').onclick = () => chrome.runtime.openOptionsPage();
+  const copyBtn = document.getElementById('copy-url');
+  if (copyBtn) {
+    copyBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+        copyBtn.textContent = 'Copied';
+        setTimeout(() => { copyBtn.textContent = 'Copy URL'; }, 1200);
+      } catch (_) {}
+    };
   }
 
-  renderSending(root, url, targets);
+  if (targets.length === 0) return;
+
   try {
     const response = await chrome.runtime.sendMessage({ type: 'sendAll', url, title });
-    renderResults(root, url, response);
+    renderResults(document.getElementById('send-section'), response);
   } catch (e) {
-    root.innerHTML = `<div class="status err">${escapeHtml(e.message || String(e))}</div>`;
+    const sec = document.getElementById('send-section');
+    sec.innerHTML = `<div class="status err">${escapeHtml(e.message || String(e))}</div>`;
   }
 })();
 
-function renderQr(root, url) {
+function renderShell(root, url, targetCount) {
+  const sendSection = targetCount > 0
+    ? `
+      <div class="send-section" id="send-section">
+        <div class="status">
+          <div class="spinner"></div>
+          <div>Sending to ${targetCount} target${targetCount > 1 ? 's' : ''}…</div>
+        </div>
+      </div>
+    `
+    : `<div class="muted">No backends configured. Scan the QR code above to open on another device.</div>`;
+
   root.innerHTML = `
     <div class="qr-wrap">
-      <div class="muted">No backends configured. Scan to open on another device:</div>
       <div id="qr"></div>
       <div class="url"></div>
       <div class="actions-row">
-        <button id="open-settings">Open settings</button>
+        <button id="copy-url" class="ghost">Copy URL</button>
+        <button id="open-settings" class="ghost">Settings</button>
       </div>
     </div>
+    ${sendSection}
   `;
   root.querySelector('.url').textContent = url;
-  renderQrInto(document.getElementById('qr'), url);
-  document.getElementById('open-settings').onclick = () => chrome.runtime.openOptionsPage();
 }
 
 function renderQrInto(el, url) {
@@ -50,21 +72,10 @@ function renderQrInto(el, url) {
   el.innerHTML = qr.createImgTag(5, 8);
 }
 
-function renderSending(root, url, targets) {
-  root.innerHTML = `
-    <div class="status">
-      <div class="spinner"></div>
-      <div>Sending to ${targets.length} target${targets.length > 1 ? 's' : ''}…</div>
-      <div class="url"></div>
-    </div>
-  `;
-  root.querySelector('.url').textContent = url;
-}
-
-function renderResults(root, url, response) {
+function renderResults(section, response) {
   if (!response || !response.ok) {
     const msg = (response && response.error) || 'Background worker unavailable';
-    root.innerHTML = `<div class="status err">Error: ${escapeHtml(msg)}</div>`;
+    section.innerHTML = `<div class="status err">Error: ${escapeHtml(msg)}</div>`;
     return;
   }
   const results = response.results || [];
@@ -82,20 +93,12 @@ function renderResults(root, url, response) {
     ? `Sent ✓`
     : (ok === 0 ? 'Send failed' : `Sent ${ok}/${results.length}`);
 
-  root.innerHTML = `
+  section.innerHTML = `
     <div class="results">
       <div class="summary">${summary}</div>
-      <div class="url"></div>
       <div class="list">${rowHtml}</div>
-      <div class="actions-row">
-        <button id="retry" class="ghost">Retry</button>
-        <button id="open-settings">Settings</button>
-      </div>
     </div>
   `;
-  root.querySelector('.url').textContent = url;
-  document.getElementById('open-settings').onclick = () => chrome.runtime.openOptionsPage();
-  document.getElementById('retry').onclick = () => location.reload();
 }
 
 function escapeHtml(s) {

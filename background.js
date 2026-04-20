@@ -24,6 +24,11 @@ async function rebuildMenus() {
       title: `Send to ${t.name}`,
       contexts: MENU_CONTEXTS
     });
+    chrome.contextMenus.create({
+      id: 'qr',
+      title: 'Show QR code',
+      contexts: MENU_CONTEXTS
+    });
     return;
   }
 
@@ -52,6 +57,18 @@ async function rebuildMenus() {
       contexts: MENU_CONTEXTS
     });
   }
+  chrome.contextMenus.create({
+    id: 'sep2',
+    parentId: MENU_ROOT,
+    type: 'separator',
+    contexts: MENU_CONTEXTS
+  });
+  chrome.contextMenus.create({
+    id: 'qr',
+    parentId: MENU_ROOT,
+    title: 'Show QR code',
+    contexts: MENU_CONTEXTS
+  });
 }
 
 chrome.runtime.onInstalled.addListener(rebuildMenus);
