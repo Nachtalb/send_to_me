@@ -60,9 +60,11 @@
         <label class="toggle"><input type="checkbox" data-kb="disablePreview"><span>Disable link preview</span></label>
       </div>
       <div class="actions">
+        <button data-act="connect">Connect chat…</button>
         <button data-act="test">Test</button>
         <button data-act="remove" class="danger">Remove</button>
       </div>
+      <div class="connect-panel" data-panel hidden></div>
       <div class="result" hidden></div>
     </div>
   </template>
@@ -81,6 +83,7 @@
     </div>
   </template>
 
+  <script src="lib/qrcode.js"></script>
   <script src="lib/shared.js"></script>
   <script src="options.js"></script>
 </body>

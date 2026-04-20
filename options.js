@@ -98,6 +98,8 @@ function renderTgItem(tg) {
   };
   const testBtn = node.querySelector('[data-act=test]');
   testBtn.onclick = () => runTelegramTest(tg, resultEl, testBtn);
+  const connectBtn = node.querySelector('[data-act=connect]');
+  connectBtn.onclick = () => startConnectFlow(tg, node);
   return node;
 }
 
@@ -161,6 +163,159 @@ async function runWebhookTest(wh, resultEl, btn) {
   } finally {
     btn.disabled = false;
   }
+}
+
+const CONNECT_TIMEOUT_MS = 5 * 60 * 1000;
+
+function randomCode(len = 6) {
+  const alphabet = 'abcdefghjkmnpqrstuvwxyz23456789';
+  let s = '';
+  const buf = new Uint32Array(len);
+  crypto.getRandomValues(buf);
+  for (let i = 0; i < len; i++) s += alphabet[buf[i] % alphabet.length];
+  return s;
+}
+
+async function pollForStart(token, code, { signal, timeoutMs = CONNECT_TIMEOUT_MS } = {}) {
+  const started = Date.now();
+  let offset = 0;
+  while (!signal || !signal.aborted) {
+    if (Date.now() - started > timeoutMs) {
+      throw new Error('Timed out waiting for connection. Try again.');
+    }
+    const url = new URL(`https://api.telegram.org/bot${encodeURIComponent(token)}/getUpdates`);
+    url.searchParams.set('timeout', '25');
+    url.searchParams.set('offset', String(offset));
+    url.searchParams.set('allowed_updates', JSON.stringify(['message']));
+    let res;
+    try {
+      res = await fetch(url.toString(), { signal });
+    } catch (e) {
+      if (e && e.name === 'AbortError') return null;
+      throw e;
+    }
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data || !data.ok) {
+      throw new Error((data && data.description) || `HTTP ${res.status}`);
+    }
+    for (const upd of data.result || []) {
+      offset = Math.max(offset, upd.update_id + 1);
+      const msg = upd.message;
+      if (!msg || !msg.text) continue;
+      const text = msg.text.trim();
+      const lower = text.toLowerCase();
+      const target = code.toLowerCase();
+      if (
+        lower === `/start ${target}` ||
+        lower === `/start${target}` ||
+        lower === target
+      ) {
+        return {
+          chatId: String(msg.chat.id),
+          topicId: msg.message_thread_id ? String(msg.message_thread_id) : '',
+          from: msg.from || null
+        };
+      }
+    }
+  }
+  return null;
+}
+
+async function startConnectFlow(tg, itemNode) {
+  const panel = itemNode.querySelector('[data-panel]');
+  const actionBtns = itemNode.querySelectorAll('.actions > button');
+  const resultEl = itemNode.querySelector('.result');
+  resultEl.hidden = true;
+
+  if (itemNode._connectAbort) {
+    itemNode._connectAbort.abort();
+    itemNode._connectAbort = null;
+  }
+
+  panel.hidden = false;
+  panel.innerHTML = '<div class="muted">Checking bot…</div>';
+  for (const b of actionBtns) b.disabled = true;
+
+  try {
+    if (!tg.botToken) throw new Error('Paste the bot token first, then click Connect.');
+    await persist();
+    const info = await getTelegramBotInfo(tg.botToken);
+    const code = randomCode();
+    const deepLink = `https://t.me/${info.username}?start=${code}`;
+
+    panel.innerHTML = `
+      <div class="connect-head">Link a chat with @${escapeHtml(info.username)}</div>
+      <div class="connect-grid">
+        <div class="connect-qr"></div>
+        <div class="connect-instr">
+          <p>Open the bot on the device that should receive messages:</p>
+          <div class="btn-row">
+            <a class="button-link" target="_blank" rel="noopener">Open in Telegram</a>
+          </div>
+          <p class="muted">Or scan the QR code. If the bot opens without the deep link, send this code to it as a message:</p>
+          <div class="code-display"></div>
+          <div class="waiting">
+            <div class="spinner spinner-sm"></div><span>Waiting for connection…</span>
+          </div>
+        </div>
+      </div>
+      <div class="actions">
+        <button data-act="cancel" class="danger">Cancel</button>
+      </div>
+    `;
+
+    panel.querySelector('.button-link').href = deepLink;
+    panel.querySelector('.code-display').textContent = code;
+
+    const qrEl = panel.querySelector('.connect-qr');
+    const qr = qrcode(0, 'M');
+    qr.addData(deepLink);
+    qr.make();
+    qrEl.innerHTML = qr.createImgTag(4, 6);
+
+    const controller = new AbortController();
+    itemNode._connectAbort = controller;
+    panel.querySelector('[data-act=cancel]').onclick = () => controller.abort();
+
+    const found = await pollForStart(tg.botToken, code, { signal: controller.signal });
+    if (!found) {
+      panel.hidden = true;
+      panel.innerHTML = '';
+      return;
+    }
+
+    tg.chatId = found.chatId;
+    if (found.topicId) tg.topicId = found.topicId;
+    if (!tg.name && found.from) {
+      tg.name = found.from.first_name || found.from.username || tg.name;
+    }
+    await persist();
+
+    for (const input of itemNode.querySelectorAll('input[data-k]')) {
+      if (input.dataset.k === 'chatId') input.value = tg.chatId || '';
+      if (input.dataset.k === 'topicId') input.value = tg.topicId || '';
+      if (input.dataset.k === 'name') input.value = tg.name || '';
+    }
+
+    panel.innerHTML = `<div class="result ok">✓ Connected: chat ID <code>${escapeHtml(tg.chatId)}</code>${tg.topicId ? `, topic <code>${escapeHtml(tg.topicId)}</code>` : ''}.</div>`;
+    setTimeout(() => { panel.hidden = true; panel.innerHTML = ''; }, 4000);
+  } catch (e) {
+    panel.innerHTML = `
+      <div class="result err">✗ ${escapeHtml(e.message || String(e))}</div>
+      <div class="actions"><button data-act="close">Close</button></div>
+    `;
+    panel.querySelector('[data-act=close]').onclick = () => {
+      panel.hidden = true;
+      panel.innerHTML = '';
+    };
+  } finally {
+    itemNode._connectAbort = null;
+    for (const b of actionBtns) b.disabled = false;
+  }
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 function scheduleSave() {
