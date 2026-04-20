@@ -14,6 +14,20 @@
 
     <section>
       <div class="sec-head">
+        <h2>This device</h2>
+      </div>
+      <p class="muted">Name used for the <em>"Sent from …"</em> footer on Telegram messages and the <code>sentFrom</code> field on webhook payloads. Leave empty to auto-use the detected browser name.</p>
+      <div class="fields single">
+        <label class="wide">
+          <span>Device name</span>
+          <input id="device-name" autocomplete="off">
+          <small class="hint muted" id="device-name-hint"></small>
+        </label>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head">
         <h2>Telegram</h2>
         <button id="add-tg">+ Add Telegram</button>
       </div>

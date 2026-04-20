@@ -5,7 +5,7 @@ A Chrome extension that sends the current tab's URL to your device(s) with one c
 Supported backends:
 
 - **Telegram** — via your own bot (set up with [@BotFather](https://t.me/BotFather)).
-- **Webhooks** — POSTs `{ url, title, timestamp }` JSON to any URL.
+- **Webhooks** — POSTs `{ url, title, timestamp, sentFrom, source }` JSON to any URL.
 - **QR code fallback** — if nothing is configured, a QR of the current URL is shown.
 
 You can combine any number of backends. Sending fans out to all of them in parallel.
@@ -43,16 +43,6 @@ Add a name and URL. Click **Test** to send a sample payload:
 1. Open `chrome://extensions`
 2. Enable *Developer mode*
 3. *Load unpacked* → select this folder
-
-## Files
-
-- `manifest.json` — MV3 manifest
-- `background.js` — service worker, context menus, dispatches sends
-- `popup.html` / `popup.js` — toolbar popup (QR or send status)
-- `options.html` / `options.js` — settings UI
-- `qr.html` / `qr.js` — standalone QR window (for context menu fallback)
-- `lib/shared.js` — storage + sender functions
-- `lib/qrcode.js` — Kazuhiko Arase's QR code generator (MIT)
 
 ## License
 

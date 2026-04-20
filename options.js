@@ -1,9 +1,10 @@
-let state = { telegrams: [], webhooks: [] };
+let state = { telegrams: [], webhooks: [], device: { name: '' } };
 let saveTimer = null;
 
 async function init() {
   state = await loadState();
   render();
+  renderDevice();
   document.getElementById('add-tg').onclick = () => {
     state.telegrams.push({
       id: uuid(),
@@ -20,6 +21,28 @@ async function init() {
     state.webhooks.push({ id: uuid(), name: '', url: '' });
     persistAndRender();
   };
+}
+
+function renderDevice() {
+  if (!state.device || typeof state.device !== 'object') state.device = { name: '' };
+  const input = document.getElementById('device-name');
+  const hint = document.getElementById('device-name-hint');
+  const detected = detectBrowserName();
+  input.value = state.device.name || '';
+  input.placeholder = detected;
+  updateDeviceHint(hint, input.value, detected);
+  input.oninput = () => {
+    state.device.name = input.value;
+    updateDeviceHint(hint, input.value, detected);
+    scheduleSave();
+  };
+}
+
+function updateDeviceHint(hint, value, detected) {
+  const trimmed = (value || '').trim();
+  hint.textContent = trimmed
+    ? `Using "${trimmed}".`
+    : `Empty — will use "${detected}" (auto-detected).`;
 }
 
 function render() {
