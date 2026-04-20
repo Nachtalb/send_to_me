@@ -176,9 +176,11 @@ function randomCode(len = 6) {
   return s;
 }
 
-async function pollForStart(token, code, { signal, timeoutMs = CONNECT_TIMEOUT_MS } = {}) {
+async function pollForStart(token, code, { signal, botUsername = '', timeoutMs = CONNECT_TIMEOUT_MS } = {}) {
   const started = Date.now();
   let offset = 0;
+  const target = code.toLowerCase();
+  const botLower = botUsername.toLowerCase();
   while (!signal || !signal.aborted) {
     if (Date.now() - started > timeoutMs) {
       throw new Error('Timed out waiting for connection. Try again.');
@@ -202,14 +204,24 @@ async function pollForStart(token, code, { signal, timeoutMs = CONNECT_TIMEOUT_M
       offset = Math.max(offset, upd.update_id + 1);
       const msg = upd.message;
       if (!msg || !msg.text) continue;
-      const text = msg.text.trim();
-      const lower = text.toLowerCase();
-      const target = code.toLowerCase();
-      if (
-        lower === `/start ${target}` ||
-        lower === `/start${target}` ||
-        lower === target
-      ) {
+      const text = msg.text.trim().toLowerCase();
+
+      // Strip optional "@botname" suffix on the command, then compare.
+      // Accepts: /start CODE | /startCODE | /start@bot CODE | /start@botCODE | CODE
+      let payload = null;
+      if (text === target) {
+        payload = target;
+      } else {
+        const m = text.match(/^\/start(?:@([a-z0-9_]+))?\s*(.+)?$/);
+        if (m) {
+          const mentioned = m[1];
+          const rest = (m[2] || '').trim();
+          if (!mentioned || !botLower || mentioned === botLower) {
+            if (rest === target) payload = target;
+          }
+        }
+      }
+      if (payload === target) {
         return {
           chatId: String(msg.chat.id),
           topicId: msg.message_thread_id ? String(msg.message_thread_id) : '',
@@ -277,7 +289,10 @@ async function startConnectFlow(tg, itemNode) {
     itemNode._connectAbort = controller;
     panel.querySelector('[data-act=cancel]').onclick = () => controller.abort();
 
-    const found = await pollForStart(tg.botToken, code, { signal: controller.signal });
+    const found = await pollForStart(tg.botToken, code, {
+      signal: controller.signal,
+      botUsername: info.username
+    });
     if (!found) {
       panel.hidden = true;
       panel.innerHTML = '';
