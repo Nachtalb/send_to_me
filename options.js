@@ -291,6 +291,9 @@ async function startConnectFlow(tg, itemNode) {
     }
     await persist();
 
+    try { await sendConnectConfirmation(tg, found); }
+    catch (e) { console.warn('Confirmation message failed:', e && e.message); }
+
     for (const input of itemNode.querySelectorAll('input[data-k]')) {
       if (input.dataset.k === 'chatId') input.value = tg.chatId || '';
       if (input.dataset.k === 'topicId') input.value = tg.topicId || '';
@@ -316,6 +319,40 @@ async function startConnectFlow(tg, itemNode) {
 
 function escapeHtml(s) {
   return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function escapeTgHtml(s) {
+  return String(s || '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+}
+
+async function sendConnectConfirmation(tg, found) {
+  const sentFrom = await resolveSentFrom();
+  const lines = [
+    `✅ Connected to <b>${escapeTgHtml(APP_NAME)}</b> on <b>${escapeTgHtml(sentFrom)}</b>.`,
+    `Links sent from this browser will arrive here.`,
+    '',
+    `— via <a href="${REPO_URL}">${escapeTgHtml(APP_NAME)}</a>`
+  ];
+  const body = {
+    chat_id: tg.chatId,
+    text: lines.join('\n'),
+    parse_mode: 'HTML',
+    disable_web_page_preview: true
+  };
+  if (found.topicId) body.message_thread_id = Number(found.topicId);
+  const res = await fetch(
+    `https://api.telegram.org/bot${encodeURIComponent(tg.botToken)}/sendMessage`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }
+  );
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data || !data.ok) {
+    throw new Error((data && data.description) || `HTTP ${res.status}`);
+  }
+  return data;
 }
 
 function scheduleSave() {
