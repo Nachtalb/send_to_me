@@ -1,0 +1,69 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Send to Me — Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Send to Me</h1>
+      <p class="muted">Configure destinations for the current tab URL. You can add any number of targets — clicking the extension icon sends the URL to all of them at once. If nothing is configured, a QR code is shown instead.</p>
+    </header>
+
+    <section>
+      <div class="sec-head">
+        <h2>Telegram</h2>
+        <button id="add-tg">+ Add Telegram</button>
+      </div>
+      <p class="muted">Create a bot with <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a>, paste the token, and set the chat ID you want to send to. To find your chat ID, message <a href="https://t.me/userinfobot" target="_blank" rel="noopener">@userinfobot</a>. For group topics, also set the topic ID.</p>
+      <div id="tg-list" class="list"></div>
+    </section>
+
+    <section>
+      <div class="sec-head">
+        <h2>Webhooks</h2>
+        <button id="add-wh">+ Add Webhook</button>
+      </div>
+      <p class="muted">The extension POSTs JSON <code>{ url, title, timestamp }</code> to each URL.</p>
+      <div id="wh-list" class="list"></div>
+    </section>
+
+    <footer class="muted">Settings are synced via your Chrome profile.</footer>
+  </div>
+
+  <template id="tg-item">
+    <div class="item">
+      <div class="fields">
+        <label><span>Name</span><input data-k="name" placeholder="My phone" autocomplete="off"></label>
+        <label><span>Bot token</span><input data-k="botToken" placeholder="123456:ABC…" autocomplete="off"></label>
+        <label><span>Chat ID</span><input data-k="chatId" placeholder="e.g. 123456789 or @channel" autocomplete="off"></label>
+        <label><span>Topic ID <em>(optional)</em></span><input data-k="topicId" placeholder="For group topics only" autocomplete="off"></label>
+      </div>
+      <div class="actions">
+        <button data-act="test">Test</button>
+        <button data-act="remove" class="danger">Remove</button>
+      </div>
+      <div class="result" hidden></div>
+    </div>
+  </template>
+
+  <template id="wh-item">
+    <div class="item">
+      <div class="fields">
+        <label><span>Name</span><input data-k="name" placeholder="Home server" autocomplete="off"></label>
+        <label class="wide"><span>URL</span><input data-k="url" placeholder="https://example.com/hook" autocomplete="off"></label>
+      </div>
+      <div class="actions">
+        <button data-act="test">Test</button>
+        <button data-act="remove" class="danger">Remove</button>
+      </div>
+      <div class="result" hidden></div>
+    </div>
+  </template>
+
+  <script src="lib/shared.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

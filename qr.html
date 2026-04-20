@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Send to Me — QR code</title>
+  <link rel="stylesheet" href="popup.css">
+  <style>
+    body { padding: 16px; }
+    .qr-wrap #qr img { width: 280px; height: 280px; }
+  </style>
+</head>
+<body>
+  <div class="qr-wrap">
+    <div class="muted">Scan to open on another device:</div>
+    <div id="qr"></div>
+    <div class="url" id="url"></div>
+  </div>
+  <script src="lib/qrcode.js"></script>
+  <script src="qr.js"></script>
+</body>
+</html>
