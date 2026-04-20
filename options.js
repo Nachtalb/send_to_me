@@ -5,7 +5,15 @@ async function init() {
   state = await loadState();
   render();
   document.getElementById('add-tg').onclick = () => {
-    state.telegrams.push({ id: uuid(), name: '', botToken: '', chatId: '', topicId: '' });
+    state.telegrams.push({
+      id: uuid(),
+      name: '',
+      botToken: '',
+      chatId: '',
+      topicId: '',
+      includeScreenshot: true,
+      disablePreview: false
+    });
     persistAndRender();
   };
   document.getElementById('add-wh').onclick = () => {
@@ -42,11 +50,21 @@ function emptyRow(text) {
 function renderTgItem(tg) {
   const tpl = document.getElementById('tg-item');
   const node = tpl.content.firstElementChild.cloneNode(true);
-  for (const input of node.querySelectorAll('input')) {
+  for (const input of node.querySelectorAll('input[data-k]')) {
     const k = input.dataset.k;
     input.value = tg[k] || '';
     input.oninput = () => {
       tg[k] = input.value;
+      scheduleSave();
+    };
+  }
+  const tgDefaults = { includeScreenshot: true, disablePreview: false };
+  for (const box of node.querySelectorAll('input[data-kb]')) {
+    const k = box.dataset.kb;
+    const def = tgDefaults[k];
+    box.checked = tg[k] === undefined ? def : !!tg[k];
+    box.onchange = () => {
+      tg[k] = box.checked;
       scheduleSave();
     };
   }

@@ -14,6 +14,11 @@ async function rebuildMenus() {
       title: 'Send to Me: show QR code',
       contexts: MENU_CONTEXTS
     });
+    chrome.contextMenus.create({
+      id: 'open-settings',
+      title: 'Send to Me: settings…',
+      contexts: MENU_CONTEXTS
+    });
     return;
   }
 
@@ -26,7 +31,12 @@ async function rebuildMenus() {
     });
     chrome.contextMenus.create({
       id: 'qr',
-      title: 'Show QR code',
+      title: 'Send to Me: show QR code',
+      contexts: MENU_CONTEXTS
+    });
+    chrome.contextMenus.create({
+      id: 'open-settings',
+      title: 'Send to Me: settings…',
       contexts: MENU_CONTEXTS
     });
     return;
@@ -69,6 +79,12 @@ async function rebuildMenus() {
     title: 'Show QR code',
     contexts: MENU_CONTEXTS
   });
+  chrome.contextMenus.create({
+    id: 'open-settings',
+    parentId: MENU_ROOT,
+    title: 'Settings…',
+    contexts: MENU_CONTEXTS
+  });
 }
 
 chrome.runtime.onInstalled.addListener(rebuildMenus);
@@ -76,6 +92,11 @@ chrome.runtime.onStartup.addListener(rebuildMenus);
 chrome.storage.onChanged.addListener(rebuildMenus);
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId === 'open-settings') {
+    chrome.runtime.openOptionsPage();
+    return;
+  }
+
   const url = info.linkUrl || info.srcUrl || info.pageUrl || (tab && tab.url);
   const title = (tab && tab.title) || '';
   if (!url) return;

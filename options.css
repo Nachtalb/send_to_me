@@ -150,6 +150,32 @@ button.danger:hover { background: var(--danger); color: #fff; }
   border-color: var(--accent);
 }
 
+.toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--fg);
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle input[type=checkbox] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
 .actions {
   display: flex;
   gap: 8px;
