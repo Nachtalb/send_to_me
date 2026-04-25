@@ -2,6 +2,8 @@
 
 A Chrome extension that sends the current tab's URL to your device(s) with one click.
 
+![Popup screenshot](screenshots/01-popup.png)
+
 Supported backends:
 
 - **Telegram** — via your own bot (set up with [@BotFather](https://t.me/BotFather)).
@@ -22,7 +24,13 @@ You can combine any number of backends. Sending fans out to all of them in paral
 
 Open the extension's options page (`chrome://extensions` → *Details* → *Extension options*, or right‑click the icon → *Options*).
 
+![Settings screenshot](screenshots/02-settings.png)
+
 ### Telegram
+
+The fastest path is the **Connect** button — paste your bot token, click Connect, then either scan the QR with the device that should receive messages or send the displayed code to the bot. The chat ID (and topic ID, if any) gets filled in for you.
+
+Manual setup if you'd rather:
 
 1. Open [@BotFather](https://t.me/BotFather) and run `/newbot` to get a bot token.
 2. Start a chat with your new bot so it can message you.
@@ -46,4 +54,4 @@ Add a name and URL. Click **Test** to send a sample payload:
 
 ## License
 
-MIT
+LGPL-3.0 — see [LICENSE](LICENSE).
