@@ -1,8 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Send to Me",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "One-click send the current tab URL to your device via Telegram, webhooks, or QR code.",
+  "author": "Nachtalb",
+  "homepage_url": "https://github.com/Nachtalb/send_to_me",
   "permissions": ["storage", "contextMenus", "activeTab", "tabs", "notifications"],
   "host_permissions": ["<all_urls>"],
   "background": {
